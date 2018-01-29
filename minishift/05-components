@@ -1,0 +1,38 @@
+#!/usr/bin/env sh
+base_dir=$(cd $(dirname $0)/..; pwd)
+pushd "$base_dir"/kubernetes
+
+# API Gateway
+oc apply -f apigateway/apigateway.yml
+
+# Zookeeper
+cat zookeeper/zookeeper.yml |
+    perl -pe 's|networking.k8s.io/v1|extensions/v1beta1|' |
+oc apply -f -
+
+# Kafka
+cat kafka/kafka.yml |
+    perl -pe 's|networking.k8s.io/v1|extensions/v1beta1|' |
+oc apply -f -
+  # TODO: check if kubelet needs hairpin mode
+
+# Controller
+oc -n openwhisk create cm controller.config $(perl -pe 's/^/--from-literal=/; s/\r?\n/ /' controller/controller.env)
+cat controller/controller.yml |
+    perl -pe 's|networking.k8s.io/v1|extensions/v1beta1|' |
+oc apply -f -
+
+# Invoker
+oc -n openwhisk create cm invoker.config $(perl -pe 's/^/--from-literal=/; s/\r?\n/ /' invoker/invoker.env)
+oc label $(oc get nodes -o name) openwhisk-role=invoker
+oc apply -f invoker/invoker.yml
+
+# Nginx
+pushd ../target
+../kubernetes/nginx/certs.sh $(minishift ip)
+ls -l certs/
+oc -n openwhisk create secret tls nginx --cert=certs/cert.pem --key=certs/key.pem
+popd
+oc -n openwhisk create configmap nginx --from-file=nginx/nginx.conf
+  # TODO: replace localhost by $(minishift ip) ?
+oc apply -f nginx/nginx.yml
