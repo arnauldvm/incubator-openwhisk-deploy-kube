@@ -7,5 +7,6 @@ pushd "$tgt_dir"
 tmpzip=$(mktemp ./~wsk.XXX)
 echo $tmpzip
 curl -# -L https://github.com/apache/incubator-openwhisk-cli/releases/download/latest/OpenWhisk_CLI-latest-mac-386.zip -o $tmpzip
+  # TODO: should adapt to Windows, Linux too
 unzip $tmpzip wsk
 rm -f $tmpzip
