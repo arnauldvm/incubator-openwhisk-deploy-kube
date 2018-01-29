@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+base_dir=$(cd $(dirname $0)/..; pwd)
+tgt_dir="$base_dir/target/bin"
+mkdir -p "$tgt_dir"
+pushd "$tgt_dir"
+
+tmpzip=$(mktemp ./~wsk.XXX)
+echo $tmpzip
+curl -# -L https://github.com/apache/incubator-openwhisk-cli/releases/download/latest/OpenWhisk_CLI-latest-mac-386.zip -o $tmpzip
+unzip $tmpzip wsk
+rm -f $tmpzip
