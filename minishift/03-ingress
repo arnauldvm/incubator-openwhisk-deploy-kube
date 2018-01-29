@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+base_dir=$(cd $(dirname $0)/..; pwd)
+pushd "$base_dir/kubernetes/cluster-setup"
+
+IP_ADDR=$(minishift ip)
+  # 192.168.99.100
+NGINX_PUBLIC_PORT=$(oc -n openwhisk describe service nginx | grep https-api | grep NodePort| awk '{print $3}' | cut -d'/' -f1)
+  # 30650
+APIGW_PUBLIC_PORT=$(oc -n openwhisk describe service apigateway | grep mgmt | grep NodePort| awk '{print $3}' | cut -d'/' -f1)
+  # 30479
+
+API_HOST="$IP_ADDR:$NGINX_PUBLIC_PORT"
+APIGW_URL="http://$IP_ADDR:$APIGW_PUBLIC_PORT"
+
+oc -n openwhisk create configmap whisk.ingress --from-literal=api_host=$API_HOST --from-literal=apigw_url=$APIGW_URL
+
+PATH="$PATH:$base_dir/target/bin"
+echo $PATH
+wsk property set --auth `cat auth.guest` --apihost $API_HOST
