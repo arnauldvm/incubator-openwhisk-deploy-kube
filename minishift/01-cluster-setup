@@ -1,0 +1,31 @@
+#!/usr/bin/env sh
+base_dir=$(cd $(dirname $0)/..; pwd)
+pushd "$base_dir/kubernetes/cluster-setup"
+
+user=openwhisk
+oc login -u system:admin
+oc adm policy --as system:admin add-cluster-role-to-user cluster-admin $user
+oc adm policy add-scc-to-user anyuid -z default
+oc login -u $user
+
+oc apply -f namespace.yml
+oc project openwhisk
+
+oc apply -f services.yml
+
+#oc -n openwhisk create cm whisk.config --from-env-file=config.env
+# --from-env-file does not exist for oc
+#vars=()
+#for v in $(cat config.env); do vars+=($v); done
+#oc -n openwhisk create cm whisk.config $(printf " --from-literal=%s" "${vars[@]}")
+oc -n openwhisk create cm whisk.config $(perl -pe 's/^/--from-literal=/; s/\r?\n/ /' config.env)
+
+oc -n openwhisk create cm whisk.runtimes --from-file=runtimes=runtimes.json
+
+#oc -n openwhisk create cm whisk.limits --from-env-file=limits.env
+#vars=()
+#for v in $(cat limits.env); do vars+=($v); done
+#oc -n openwhisk create cm whisk.limits $(printf " --from-literal=%s" "${vars[@]}")
+oc -n openwhisk create cm whisk.limits $(perl -pe 's/^/--from-literal=/; s/\r?\n/ /' limits.env)
+
+oc -n openwhisk create secret generic whisk.auto --from-file=system=auth.whisk.system --from-file=guest=auth.guest
